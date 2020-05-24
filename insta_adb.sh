@@ -9,7 +9,9 @@ btmINSTA="680 670"
 btmBACK="243 1847"
 
 PROFILE="968 1710"
-TAGS=( # ~55px Y
+
+# ~55px Y
+TAGS=(
 	"100 838"
 	"100 900"
 	"100 960"
@@ -81,6 +83,7 @@ run_instagram() {
 
 go_tags() {
 	max_likes=60
+	half_likes=$(($max_likes/2))
 	current_likes=0
 	tag_no=1
 	tag="${TAGS[$(rand 0-7)]}"
@@ -103,7 +106,8 @@ go_tags() {
 		#	      cur_like + like_or_not(1/0)
 		current_likes=$(($current_likes+$?))
 		log "like: $current_likes - max: $max_likes"
-		if [ ${current_likes} > $(($max_likes/2)) ]; then
+		if [ ${current_likes} -gt ${half_likes} ]; then
+			log "${current_likes} is bigger than half: ${half_likes}"
 			if [ $(rand 1-5) -eq 1 ]; then
 				go_back
 			fi
