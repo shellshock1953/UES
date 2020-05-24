@@ -6,6 +6,7 @@ a_SWIPE="adb shell input touchscreen swipe"
 
 btmHOME="1847 535"
 btmINSTA="680 670"
+btmBACK="243 1847"
 
 PROFILE="968 1710"
 TAGS=( # ~55px Y
@@ -53,6 +54,10 @@ go_home() {
 	go_to $HOME
 }
 
+go_back() {
+	log "$FUNCNAME"
+	go_to $btmBACK
+}
 go_profile() {
 	log "$FUNCNAME"
 	go_to $PROFILE
@@ -98,6 +103,11 @@ go_tags() {
 		#	      cur_like + like_or_not(1/0)
 		current_likes=$(($current_likes+$?))
 		log "like: $current_likes - max: $max_likes"
+		if [ ${current_likes} > $(($max_likes/2)) ]; then
+			if [ $(rand 1-5) -eq 1 ]; then
+				go_back
+			fi
+		fi
 	done
 
 	log "done with TAG: $tag_no ($tag)"
