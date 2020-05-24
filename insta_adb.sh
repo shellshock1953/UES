@@ -63,6 +63,10 @@ kill_instagram() {
 }
 run_instagram() {
 	log "$FUNCNAME"
+	# Set lowest brightness
+	adb shell settings put system screen_brightness_mode 0
+	adb shell settings put system screen_brightness 0
+
 	log "killing running instagram"
 	kill_instagram
 	go_to $btmHOME
@@ -75,58 +79,69 @@ go_tags() {
 	max_likes=60
 	current_likes=0
 	tag_no=1
-	for tag in "${TAGS[@]}"
-	do
-		log "TAG: $tag_no ($tag)"
-		tag_no=$(($tag_no+1))
-		go_profile
-		# Press more on tags lisk
-		go_to 522 1010
-		slp
-		go_to $tag
-		slp
-		# Need to skip videos
-		$a_SWIPE $(rand 700-900) $(rand 1300-1500) $(rand 700-900) $(rand 300-400) $(rand 190-270)
-		
-		while [ ${current_likes} -lt ${max_likes} ]; do
-			log "like: $current_likes - max: $max_likes"
-			current_likes=$(($current_likes+1))
-			swipe_n_like
-		done
-		current_likes=0
-		slp
-		kill_instagram
-		slp $(rand 60-500)
-		run_instagram
-		slp $(rand 10-15)
+	tag="${TAGS[$(rand 0-7)]}"
+
+	log "TAG: $tag_no ($tag)"
+	tag_no=$(($tag_no+1))
+	go_profile
+	# Press more on tags list
+	go_to 522 1010
+	slp
+	go_to $tag
+	slp
+
+	# Need to skip videos
+	$a_SWIPE $(rand 700-900) $(rand 1300-1500) $(rand 700-900) $(rand 300-400) $(rand 190-270)
+	slp $(rand 3-5)
+	
+	while [ ${current_likes} -lt ${max_likes} ]; do
+		swipe_n_like
+		#	      cur_like + like_or_not(1/0)
+		current_likes=$(($current_likes+$?))
+		log "like: $current_likes - max: $max_likes"
 	done
+	current_likes=0
+	slp
+	kill_instagram
+	slp $(rand 60-120)
+	run_instagram
+	slp $(rand 10-15)
 }
 
 
 
 
 swipe_n_like() {
-	while [ $(rand 1-3) -ne 3 ]; do
+	while [ $(rand 1-4) -ne 2 ]; do
 		log "swipe..."
 		# 		start X		start Y		end X		end Y		swipe time
 		$a_SWIPE $(rand 700-900) $(rand 1300-1500) $(rand 700-900) $(rand 300-400) $(rand 190-270)
-		slp
+		slp 0.$(rand "2-9")
 	done
-	slp $(rand_dig "1-60" "10-90")
 	# Doubletap
 	if [ $(rand 1-2) -ne 2 ]; then
 		$a_SHELL 'cat /sdcard/doubletap_1 > /dev/input/event1 && sleep 0.12 && cat /sdcard/doubletap_1 > /dev/input/event1'
 		log "liked!"
+		slp $(rand_dig "1-30" "10-90")
+		return 1
 	else
 		log "not liked"
+		return 0
 	fi
 }
 
-run_instagram
-slp $(rand 10-15)
-while true; do
-	go_tags
-done
+MODE={1:-prod}
+case $MODE in 
+	prod)
+		run_instagram
+		slp $(rand 10-15)
+		while true; do
+			go_tags
+		done
+		;;
+	*)
+		go_tags
+esac
 
 
 
