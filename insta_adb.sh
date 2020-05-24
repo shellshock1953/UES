@@ -8,8 +8,7 @@ btmHOME="1847 535"
 btmINSTA="680 670"
 
 PROFILE="968 1710"
-TAGS=(
-	# ~55px Y
+TAGS=( # ~55px Y
 	"100 838"
 	"100 900"
 	"100 960"
@@ -100,6 +99,8 @@ go_tags() {
 		current_likes=$(($current_likes+$?))
 		log "like: $current_likes - max: $max_likes"
 	done
+
+	log "done with TAG: $tag_no ($tag)"
 	current_likes=0
 	slp
 	kill_instagram
@@ -112,17 +113,18 @@ go_tags() {
 
 
 swipe_n_like() {
-	while [ $(rand 1-4) -ne 2 ]; do
+	while [ $(rand 1-3) -ne 1 ]; do
 		log "swipe..."
 		# 		start X		start Y		end X		end Y		swipe time
 		$a_SWIPE $(rand 700-900) $(rand 1300-1500) $(rand 700-900) $(rand 300-400) $(rand 190-270)
 		slp 0.$(rand "2-9")
 	done
 	# Doubletap
-	if [ $(rand 1-2) -ne 2 ]; then
+	if [ $(rand 1-2) -ne 1 ]; then
 		$a_SHELL 'cat /sdcard/doubletap_1 > /dev/input/event1 && sleep 0.12 && cat /sdcard/doubletap_1 > /dev/input/event1'
+		slp $(rand_dig "10-15" "10-90")
 		log "liked!"
-		slp $(rand_dig "1-30" "10-90")
+		slp $(rand_dig "10-15" "10-90")
 		return 1
 	else
 		log "not liked"
@@ -130,9 +132,11 @@ swipe_n_like() {
 	fi
 }
 
-MODE={1:-prod}
+log "Instagram ADB auto-liker by shellshock"
+MODE=${1:-prod}
 case $MODE in 
 	prod)
+		log "started in $MODE"
 		run_instagram
 		slp $(rand 10-15)
 		while true; do
@@ -140,6 +144,7 @@ case $MODE in
 		done
 		;;
 	*)
+		log "started in $MODE"
 		go_tags
 esac
 
