@@ -22,6 +22,16 @@ TAGS=(
 )
 HOME="106 1710"
 
+MAX_LIKE_PER_TAG=60
+
+randTag_no="1-7"
+randSwipe="1-3"
+randLike="1-2"
+randSleepAfterLike="10-15"
+randGoBack="1-5"
+randSleepAfterKill="40-60"
+randSleepAfterStart="10-15"
+
 log() {
 	echo "`date '+%Y-%m-%d %H:%M'` -- $1"
 }
@@ -81,64 +91,72 @@ run_instagram() {
 	go_to $btmINSTA
 }
 
-go_tags() {
-	max_likes=60
+run_main() {
+	# vars
+	max_likes=$MAX_LIKE_PER_TAG
 	half_likes=$(($max_likes/2))
 	current_likes=0
 	tag_no=1
-	tag="${TAGS[$(rand 0-7)]}"
 
+	# Take a random tag from profile bio
+	tag="${TAGS[$(rand $randTag_no)]}"
 	log "TAG: $tag_no ($tag)"
 	tag_no=$(($tag_no+1))
 	go_profile
-	# Press more on tags list
-	go_to 522 1010
+	go_to 522 1010  # Press more on tags list (need to kill insta every time)
 	slp
 	go_to $tag
 	slp
 
-	# Need to skip videos
+	# Need to skip videos at the beggining
 	$a_SWIPE $(rand 700-900) $(rand 1300-1500) $(rand 700-900) $(rand 300-400) $(rand 190-270)
 	slp $(rand 3-5)
 	
 	while [ ${current_likes} -lt ${max_likes} ]; do
 		swipe_n_like
+
 		#	      cur_like + like_or_not(1/0)
 		current_likes=$(($current_likes+$?))
 		log "like: $current_likes - max: $max_likes"
+		
+
+		# sometimes go back 
 		if [ ${current_likes} -gt ${half_likes} ]; then
 			log "${current_likes} is bigger than half: ${half_likes}"
-			if [ $(rand 1-5) -eq 1 ]; then
+			if [ $(rand $randGoBack) -eq 1 ]; then
 				go_back
 			fi
 		fi
 	done
 
+	# afterparty
 	log "done with TAG: $tag_no ($tag)"
 	current_likes=0
 	slp
 	kill_instagram
-	slp $(rand 60-120)
+	slp $(rand $randSleepAfterKill)
 	run_instagram
-	slp $(rand 10-15)
+	slp $(rand $randSleepAfterStart)
 }
 
 
 
 
 swipe_n_like() {
-	while [ $(rand 1-3) -ne 1 ]; do
+	# Swiping
+	while [ $(rand $randSwipe) -ne 1 ]; do
 		log "swipe..."
 		# 		start X		start Y		end X		end Y		swipe time
 		$a_SWIPE $(rand 700-900) $(rand 1300-1500) $(rand 700-900) $(rand 300-400) $(rand 190-270)
 		slp 0.$(rand "2-9")
 	done
+
 	# Doubletap
-	if [ $(rand 1-2) -ne 1 ]; then
+	if [ $(rand $randLike) -ne 1 ]; then
 		$a_SHELL 'cat /sdcard/doubletap_1 > /dev/input/event1 && sleep 0.12 && cat /sdcard/doubletap_1 > /dev/input/event1'
-		slp $(rand_dig "10-15" "10-90")
+		slp $(rand_dig $randSleepAfterLike "10-90")
 		log "liked!"
-		slp $(rand_dig "10-15" "10-90")
+		slp $(rand_dig $randSleepAfterLike "10-90")
 		return 1
 	else
 		log "not liked"
@@ -154,12 +172,15 @@ case $MODE in
 		run_instagram
 		slp $(rand 10-15)
 		while true; do
-			go_tags
+			run_main
 		done
+		;;
+	exit)
+		kill_instagram
 		;;
 	*)
 		log "started in $MODE"
-		go_tags
+		run_main
 esac
 
 
