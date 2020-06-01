@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# exit on any errors
+# set -e
+
 a_SHELL="adb shell"
 a_TAP="adb shell input tap"
 a_EVENT="adb shell sendevent /dev/input/event2"
@@ -11,37 +15,32 @@ btmBACK="243 1847"
 PROFILE="968 1710"
 
 # ~55px Y
-TAGS=(
-	"100 838"
-	"100 900"
-	"100 960"
-	"100 1008"
-	"100 1062"
-	"100 1120"
-	"100 1175"
-)
+TAGS=("" "100 838" "100 900" "100 960" "100 1008" "100 1062" "100 1120" "100 1175")
 HOME="106 1710"
 
-MAX_LIKE_PER_TAG=60
+MAX_LIKE_PER_TAG=30
 
-randTag_no="1-7"
-randSwipe="1-3"
+randTag_no="2-7"
+randSwipe="1-2"
 randLike="1-2"
-randSleepAfterLike="10-15"
-randGoBack="1-5"
+randSleepAfterLike="5-10"
+randGoBack="1-50"
+randFastScroll="1-3"
+randFastScrollTimes="5-10"
 randSleepAfterKill="40-60"
 randSleepAfterStart="10-15"
 
+source /home/${USER}/ENV/3/bin/activate
+
+# Utils
 log() {
 	echo "`date '+%Y-%m-%d %H:%M'` -- $1"
 }
-
 slp() {
 	S=${1:-0.5}
 	log "sleep for $S..."
 	sleep $S
 }
-
 rand() {
 	echo $(shuf -n 1 -i $1)
 }
@@ -50,6 +49,7 @@ rand_dig() {
 	echo $(shuf -n 1 -i $1)${DELIM}$(shuf -n 1 -i $2)
 }
 
+# Go To
 go_to() {
 	X=$1
 	Y=$2
@@ -74,8 +74,23 @@ go_profile() {
 	log "$FUNCNAME"
 	go_to $PROFILE
 }
+swipe() {
+	log "$FUNCNAME"
+	# 		start X		start Y		end X		end Y		swipe time
+	$a_SWIPE $(rand 700-900) $(rand 1300-1500) $(rand 700-900) $(rand 300-400) $(rand 190-270)
+	slp 0.$(rand "2-9")
+}
+
+# Notification
+telegram_nofity() {
+	telegram-send --config /home/${USER}/.config/telegram-send.conf $1
+	
+}
+
+# Exec
 kill_instagram() {
 	adb shell am force-stop com.instagram.android || log "not running?"
+	log "$FUNCNAME - killed"
 }
 run_instagram() {
 	log "$FUNCNAME"
@@ -93,7 +108,7 @@ run_instagram() {
 
 run_main() {
 	# vars
-	max_likes=$MAX_LIKE_PER_TAG
+	max_likes=$( rand ${MAX_LIKE_PER_TAG}-$(($MAX_LIKE_PER_TAG+10)) )
 	half_likes=$(($max_likes/2))
 	current_likes=0
 	tag_no=1
@@ -103,10 +118,13 @@ run_main() {
 	log "TAG: $tag_no ($tag)"
 	tag_no=$(($tag_no+1))
 	go_profile
+	slp $(rand 3-5)
 	go_to 522 1010  # Press more on tags list (need to kill insta every time)
-	slp
+	slp $(rand 1-2)
 	go_to $tag
-	slp
+	slp $(rand 3-4)
+	go_to 758 786  # Show Recents
+	slp $(rand 4-5)
 
 	# Need to skip videos at the beggining
 	$a_SWIPE $(rand 700-900) $(rand 1300-1500) $(rand 700-900) $(rand 300-400) $(rand 190-270)
@@ -125,6 +143,18 @@ run_main() {
 			log "${current_likes} is bigger than half: ${half_likes}"
 			if [ $(rand $randGoBack) -eq 1 ]; then
 				go_back
+			fi
+
+		# fast scroll
+		elif [ ${current_likes} -lt 2 ]; then
+			if [ $(rand $randFastScroll) -eq 1 ]; then
+				scroll=0
+				scroll_times=$(rand $randFastScrollTimes)
+				while [ ${scroll} -lt ${scroll_times} ]; do
+					log "fast scroll: $scroll of $scroll_times"
+					swipe
+					scroll=$(($scroll+1))
+				done
 			fi
 		fi
 	done
@@ -145,10 +175,7 @@ run_main() {
 swipe_n_like() {
 	# Swiping
 	while [ $(rand $randSwipe) -ne 1 ]; do
-		log "swipe..."
-		# 		start X		start Y		end X		end Y		swipe time
-		$a_SWIPE $(rand 700-900) $(rand 1300-1500) $(rand 700-900) $(rand 300-400) $(rand 190-270)
-		slp 0.$(rand "2-9")
+		swipe
 	done
 
 	# Doubletap
@@ -157,6 +184,7 @@ swipe_n_like() {
 		slp $(rand_dig $randSleepAfterLike "10-90")
 		log "liked!"
 		slp $(rand_dig $randSleepAfterLike "10-90")
+		swipe
 		return 1
 	else
 		log "not liked"
@@ -168,7 +196,9 @@ log "Instagram ADB auto-liker by shellshock"
 MODE=${1:-prod}
 case $MODE in 
 	prod)
+		#telegram_nofity "[ok]InstaADB_started"
 		log "started in $MODE"
+		adb devices
 		run_instagram
 		slp $(rand 10-15)
 		while true; do
@@ -176,7 +206,11 @@ case $MODE in
 		done
 		;;
 	exit)
+		#telegram_nofity "[!_]InstaADB_stopted"
 		kill_instagram
+		;;
+	fail)
+		telegram_nofity "[!!]InstaADB_FAILS"
 		;;
 	*)
 		log "started in $MODE"
